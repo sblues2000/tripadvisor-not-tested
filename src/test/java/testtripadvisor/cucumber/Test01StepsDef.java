@@ -21,7 +21,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Test01StepsDef {
-	private static final float MAX_PRICE = 50;
+	private static final int MAX_PRICE = 50;
 
 	//new enum for earlier JVM versions(before 1.7) compatibility...
 	//different browsers we are willing to run against
@@ -48,13 +48,13 @@ public class Test01StepsDef {
 			}
 			case Chrome: {
 				//TODO change the path!!! System.setProperty("webdriver.browserName.driver","<somePath>webdriverName.exe");
-				System.setProperty("webdriver.chrome.driver", "C://ProgramFiles//chromeWebDriver//chromedriver.exe");
+				System.setProperty("webdriver.chrome.driver", "C://ProgramFiles//webDrivers//chromedriver.exe");
 				driver = new ChromeDriver();
 				break;
 			}
 			case InternetExplorer: {
 				//TODO change the path!!! System.setProperty("webdriver.browserName.driver","<somePath>webdriverName.exe");
-				System.setProperty("webdriver.ie.driver", "C://ProgramFiles//ieWebDriver//IEDriverServer.exe");
+				System.setProperty("webdriver.ie.driver", "C://ProgramFiles//webDrivers//IEDriverServer.exe");
 				driver = new InternetExplorerDriver();
 				break;
 			}
@@ -102,7 +102,6 @@ public class Test01StepsDef {
 		boolean elementMustBeFound = true;
 		try {
 			//WebElement foundElement = driver.findElement(By.className("typeahead_input"));
-			//WebElement foundElement = driver.findElement(By.xpath("input[contains(@class, 'typeahead_input')]"));
 			//WebElement foundElement = driver.findElement(By.xpath("//input[@class=\"typeahead_input\"]"));
 			WebElement foundElement = driver.findElement(By.xpath("//input[contains(@placeholder,'Search a destination')]"));
 			if (!elementMustBeFound && foundElement.isDisplayed()) {
@@ -123,33 +122,43 @@ public class Test01StepsDef {
 		driver.findElement(By.partialLinkText(optionText)).click();
 	}
 
-	@When("^I navigate through the search result pages until I find hiking link for (.*)$")
+	@When("^I navigate through the search result pages until I find and select hiking link for \"([^\"]*)\"$")
 	public void navigate_and_find_attraction(String attractionName) {
 		try {
-			driver.findElement(By.partialLinkText("Hiking & Camping")).click();
-			WebElement foundElement = driver.findElement(By.partialLinkText(attractionName));
-			foundElement.getAttribute("href");
-			System.out.println(foundElement.getAttribute("href").toString());
-			foundElement.click();
+
+			WebElement foundHikingAttractions= driver.findElement(By.partialLinkText("Hiking & Camping"));
+			System.out.println(foundHikingAttractions.getAttribute("onclick").toString());
+			foundHikingAttractions.click();
+			//driver.get("https://www.tripadvisor.co.uk/AttractionProductDetail-g32655-d11452072-Hollywood_Hills_Hiking_Tour_in_Los_Angeles-Los_Angeles_California.html");
+			//WebElement foundLinkElement = driver.findElement(By.partialLinkText(attractionName));
+			WebElement foundLinkElement = driver.findElement(By.xpath("//a[contains(@title=\"Hollywood Hills Hiking Tour in Los Angeles\"]"));
+			foundLinkElement.click();
 		} catch (NoSuchElementException e) {
 			TestCase.fail();
 		}
 	}
 
-	@Then("the product’s price is not greater than £(.*)$")
+	@Then("the product’s price will not be greater than £(.*)$")
 	public void products_price_check(String productsPrice) {
-		final float priceNumber = extractValue(productsPrice);
-		if (priceNumber > MAX_PRICE)
+		String foundPrice = driver.findElement(By.xpath("//div[@class=\"pricing\"]")).getText();
+		int intFoundPrice = extractValue(foundPrice);
+		System.out.println(driver.getCurrentUrl());
+		if (intFoundPrice > Integer.parseInt(productsPrice))
 			TestCase.fail();
 	}
 
-	private float extractValue(String productsPrice) {
-		String regex = "([0-9]+[.][0-9]+)";
+	private int extractValue(String productsPrice) {
+		String regex = "([0-9]+)([.][0-9]+)?";
 		Pattern pattern = Pattern.compile(regex);
 		Matcher matcher = pattern.matcher(productsPrice);
 
 		if (matcher.find()) {
+			System.out.println("Found attraction price:");
 			System.out.println(matcher.group());
+			int roundedPrice = Integer.parseInt(matcher.group(1));
+			if (matcher.group(2) != null && !matcher.group(2).contentEquals(".00"))
+				roundedPrice++;
+			return roundedPrice;
 		}
 		return 0;
 	}
