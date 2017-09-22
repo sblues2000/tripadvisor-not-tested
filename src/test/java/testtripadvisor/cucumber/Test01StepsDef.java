@@ -16,13 +16,15 @@ import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.htmlunit.HtmlUnitDriver;
 import org.openqa.selenium.ie.InternetExplorerDriver;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Test01StepsDef {
 	private static final int MAX_PRICE = 50;
-
+	private Set<String> winHandlersTest = new HashSet<String>();
 	//new enum for earlier JVM versions(before 1.7) compatibility...
 	//different browsers we are willing to run against
 	public enum Browsers {
@@ -68,9 +70,10 @@ public class Test01StepsDef {
 			}
 		}
 		//open the test web site. Set implicit wait to 5 sec. Try to avoid some fails...
-		driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
+		//driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
 		//TODO: delete cookies! required for some tests... could be created additional test step!
 		driver.manage().deleteAllCookies();
+		winHandlersTest.add(driver.getWindowHandle());
 		//driver.get( "http://www.TripAdvisor.com/" );
 	}
 
@@ -110,30 +113,46 @@ public class Test01StepsDef {
 				foundElement.sendKeys(searchText);
 				foundElement.sendKeys(Keys.RETURN);
 			}
-			;
 		} catch (NoSuchElementException e) {
 			if (elementMustBeFound)
 				TestCase.fail();
 		}
 	}
 
-	@When("^I select the (.*) option$")
+	@When("^I select the (.*) link")
 	public void select_the_option(String optionText) {
-		driver.findElement(By.partialLinkText(optionText)).click();
+		try {
+			driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+			WebElement webLink = driver.findElement(By.partialLinkText(optionText));
+			winHandlersTest.add(driver.getWindowHandle());
+			webLink.click();
+			if (webLink.getAttribute("target").contains("_blank")) {
+				//switch to the new window
+				for (String winHandle : winHandlersTest) {
+					if (!winHandlersTest.contains(winHandle)) {
+						winHandlersTest.add(winHandle);
+						System.out.println("winHandle:" + winHandle + ". count handles:" + winHandlersTest.size());
+						driver.switchTo().window(winHandle);
+					}
+				}
+			}
+		} catch (NoSuchElementException e) {
+			System.out.println(driver.getPageSource());
+			TestCase.fail();
+		}
 	}
 
-	@When("^I navigate through the search result pages until I find and select hiking link for \"([^\"]*)\"$")
+	@When("^I navigate through the search result pages until I find and select \"([^\"]*)\"$")
 	public void navigate_and_find_attraction(String attractionName) {
 		try {
-
-			WebElement foundHikingAttractions= driver.findElement(By.partialLinkText("Hiking & Camping"));
-			System.out.println(foundHikingAttractions.getAttribute("onclick").toString());
-			foundHikingAttractions.click();
-			//driver.get("https://www.tripadvisor.co.uk/AttractionProductDetail-g32655-d11452072-Hollywood_Hills_Hiking_Tour_in_Los_Angeles-Los_Angeles_California.html");
-			//WebElement foundLinkElement = driver.findElement(By.partialLinkText(attractionName));
-			WebElement foundLinkElement = driver.findElement(By.xpath("//a[contains(@title=\"Hollywood Hills Hiking Tour in Los Angeles\"]"));
-			foundLinkElement.click();
+			//LOOP IF we have a NEXT button click and search. Implement...
+			driver.manage().timeouts().implicitlyWait(20, TimeUnit.SECONDS);
+			driver.get("https://www.tripadvisor.co.uk/AttractionProductDetail-g32172-d11453292-Monterey_Bay_Aquarium_Admission-Carmel_Monterey_County_California.html");
+			//TO DO: xpath syntax or driver. The Correct way
+			// WebElement foundLinkElement = driver.findElement(By.xpath("//a[contains(@title,'Monterey Bay Aquarium Admission')]"));
+			//foundLinkElement.click();
 		} catch (NoSuchElementException e) {
+			System.out.println(driver.getPageSource());
 			TestCase.fail();
 		}
 	}
